@@ -13,7 +13,7 @@ kvdb:
   isOpen: true
 
 mysql:
-  user: root
+  user: go_user
   password: 123456
   address: 127.0.0.1:3306
   name: im_db
@@ -22,11 +22,13 @@ mongodb:
   address: 127.0.0.1:27017
   name: jim_msgs
 
-# apiGateway:
-#   httpPort: 9001
+# jugglechat-server连接im-server的端口
+apiGateway: 
+  httpPort: 9001
 
-# connectManager:
-#   wsPort: 9003
+# 长链接的端口
+connectManager:
+  wsPort: 9003
 
 adminGateway:
   httpPort: 8090
