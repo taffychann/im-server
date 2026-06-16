@@ -85,13 +85,13 @@ var Config ImConfig
 
 func InitConfigures() error {
 	configFile := flag.String("config", "conf/config.yml", "Path to the configuration file")
-	flag.Parse()
+	flag.Parse() //读取命令行-config参数的值，赋值给configFile变量
 	cfBytes, err := os.ReadFile(*configFile)
 	if err == nil {
 		var conf ImConfig
-		yaml.Unmarshal(cfBytes, &conf)
+		yaml.Unmarshal(cfBytes, &conf) //反序列化配置文件内容到conf变量
 		Config = conf
-		//check
+		//check 对若干必需/可选字段做校验与默认赋值
 		if Config.NodeName == "" {
 			Config.NodeName = tools.GenerateUUIDShort11()
 		}

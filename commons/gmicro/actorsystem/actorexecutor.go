@@ -16,7 +16,7 @@ type IExecutor interface {
 type ActorExecutor struct {
 	wraperChan  chan wraper
 	executePool *tunny.Pool
-	actorPool   sync.Pool
+	actorPool   sync.Pool // Actor 有临时状态，使用 sync.Pool 隔离实例，避免并发数据竞争。
 }
 
 func NewActorExecutorWithDefaultPool(pool *tunny.Pool, actorCreateFun func() IUntypedActor) *ActorExecutor {
@@ -54,9 +54,9 @@ func (executor *ActorExecutor) Execute(req *MessageRequest, msgSender *MsgSender
 }
 
 func actorExecute(executor *ActorExecutor) {
-	for {
+	for { // 阻塞循环，等待消息请求
 		wraper := <-executor.wraperChan
-		go executor.executePool.Process(func() {
+		go executor.executePool.Process(func() { // tunny仅支持有限数量同步执行，使用goroutine包装异步执行
 			defer utils.Recovery()
 
 			actorObj := executor.actorPool.Get()
@@ -68,7 +68,7 @@ func actorExecute(executor *ActorExecutor) {
 
 			receiveHandler, ok := actorObj.(IReceiveHandler)
 			if ok {
-				receiveHandler.OnReceive(context.Background(), wraper.msg)
+				receiveHandler.OnReceive(context.Background(), wraper.msg) // 实际的业务处理逻辑
 			}
 			executor.actorPool.Put(actorObj)
 		})

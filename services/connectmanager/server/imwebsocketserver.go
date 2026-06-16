@@ -19,13 +19,16 @@ import (
 	"golang.org/x/time/rate"
 )
 
+// 主服务器
+// 启动 HTTP 服务，监听 WebSocket 连接
 type ImWebsocketServer struct {
 	MessageListener ImListener
 }
 
+// 异步启动服务器
 func (server *ImWebsocketServer) AsyncStart(port int) {
 	var mux *http.ServeMux = commonservices.GetDefaultHttpServeMux()
-	mux.HandleFunc("/im", server.ImWsServer)
+	mux.HandleFunc("/im", server.ImWsServer) // WebSocket 连接入口
 	mux.HandleFunc("/im/publish", imhttpmsghandlers.ImHttpPubHandler)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -46,21 +49,28 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+// 建立连接
 func (server *ImWebsocketServer) ImWsServer(w http.ResponseWriter, r *http.Request) {
-	conn, err := upgrader.Upgrade(w, r, nil)
+	conn, err := upgrader.Upgrade(w, r, nil) //升级 HTTP 连接到 WebSocket
 	if err != nil {
 		fmt.Println("Error during connect upgrade:", err)
 		return
 	}
+
+	// 从 HTTP 请求中提取 Referer 和客户端 IP 地址
 	referer := strings.TrimSpace(r.Header.Get("Origin"))
 	if referer == "" {
 		referer = strings.TrimSpace(r.Header.Get("Referer"))
 	}
+
+	// 获取客户端 IP 地址，优先使用 X-Real-Ip 头部
 	clientIp := conn.RemoteAddr().String()
 	realIp := strings.TrimSpace(r.Header.Get("X-Real-Ip"))
 	if realIp != "" {
 		clientIp = realIp
 	}
+
+	// 创建 ImWebsocketChild 实例，管理该连接
 	child := &ImWebsocketChild{
 		stopChan:         make(chan bool, 1),
 		wsConn:           conn,
@@ -68,6 +78,8 @@ func (server *ImWebsocketServer) ImWsServer(w http.ResponseWriter, r *http.Reque
 		messageListener:  server.MessageListener,
 		latestActiveTime: time.Now().UnixMilli(),
 	}
+
+	// 用 utils.SafeGo 启动后台监听，不阻塞主请求线程
 	utils.SafeGo(func() {
 		child.startWsListener(referer, clientIp)
 	})
@@ -76,6 +88,10 @@ func (server *ImWebsocketServer) Stop() {
 
 }
 
+// 单个连接管理，每个客户端连接对应一个 ImWebsocketChild 实例
+// 维护 WebSocket 连接
+// 管理连接生命周期
+// 处理心跳检测
 type ImWebsocketChild struct {
 	stopChan         chan bool
 	wsConn           *websocket.Conn
@@ -85,6 +101,7 @@ type ImWebsocketChild struct {
 	ticker           *time.Ticker
 }
 
+// 启动 WebSocket 监听器，处理客户端消息
 func (child *ImWebsocketChild) startWsListener(referer, clientIp string) {
 	handler := IMWebsocketMsgHandler{child.messageListener}
 	ctx := &WsHandleContextImpl{
@@ -104,7 +121,7 @@ func (child *ImWebsocketChild) startWsListener(referer, clientIp string) {
 	child.startTicker(ctx, handler)
 
 	for child.isActive {
-		_, message, err := child.wsConn.ReadMessage()
+		_, message, err := child.wsConn.ReadMessage() // 读取客户端消息，阻塞直到有消息或连接关闭
 		//record
 		child.latestActiveTime = time.Now().UnixMilli()
 
@@ -118,7 +135,7 @@ func (child *ImWebsocketChild) startWsListener(referer, clientIp string) {
 
 		//decode
 		wsMsg := &codec.ImWebsocketMsg{}
-		err = tools.PbUnMarshal(message, wsMsg)
+		err = tools.PbUnMarshal(message, wsMsg) // protobuf 反序列化
 		if err != nil {
 			fmt.Println("failed to decode pb data:", err)
 			child.Stop()
@@ -127,9 +144,9 @@ func (child *ImWebsocketChild) startWsListener(referer, clientIp string) {
 		}
 
 		//decrypt
-		wsMsg.Decrypt(ctx)
+		wsMsg.Decrypt(ctx) // 解密
 
-		handler.HandleRead(ctx, wsMsg)
+		handler.HandleRead(ctx, wsMsg) // 送入消息分发
 	}
 }
 
@@ -176,6 +193,7 @@ type WsHandleContextImpl struct {
 	lock       *sync.RWMutex
 }
 
+// 将一条消息发送到客户端
 func (ctx *WsHandleContextImpl) Write(message interface{}) {
 	imMsg, ok := message.(codec.IMessage)
 	if ok {

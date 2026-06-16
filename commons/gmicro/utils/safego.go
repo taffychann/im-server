@@ -7,6 +7,7 @@ import (
 	"strings"
 )
 
+// 捕获并恢复此任务内发生的 panic，防止泄露到 worker 池或主循环
 func Recovery() {
 	e := recover()
 	if e == nil {

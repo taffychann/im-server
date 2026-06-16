@@ -48,7 +48,7 @@ func (ser *ConnectManager) Startup(args map[string]interface{}) {
 	ser.wsServer = &server.ImWebsocketServer{
 		MessageListener: &server.ImListenerImpl{},
 	}
-	ser.wsServer.AsyncStart(wsPort)
+	ser.wsServer.AsyncStart(wsPort) // 启动 WebSocket 监听器，处理客户端消息
 	fmt.Println("Start", serviceName, "with port:", wsPort)
 }
 

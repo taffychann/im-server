@@ -53,6 +53,8 @@ import (
 
 func main() {
 	start := time.Now()
+
+	// for pprof
 	go func() {
 		fmt.Println(http.ListenAndServe(":6060", nil))
 	}()
@@ -63,8 +65,10 @@ func main() {
 		fmt.Println("Init Configures failed.", err)
 		return
 	}
+
 	//init logs
 	logs.InitLogs()
+
 	//init mysql
 	if err := dbcommons.InitMysql(); err != nil {
 		logs.Error("Init Mysql failed.", err)
@@ -133,6 +137,7 @@ func main() {
 	imstarters.Startup()
 	fmt.Println("expand:", time.Since(start))
 
+	// 阻塞等待退出信号
 	closeChan := make(chan struct{})
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)

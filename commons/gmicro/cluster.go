@@ -160,7 +160,7 @@ func NewNode(name, ip string, exts map[string]string) *Node {
 
 func (node *Node) AddMethod(method string) {
 	node.methodMap[method] = true
-	methodArr := make([]string, 0, len(node.methodMap))
+	methodArr := make([]string, 0, len(node.methodMap)) //每次添加方法都重建切片
 	for method := range node.methodMap {
 		methodArr = append(methodArr, method)
 	}

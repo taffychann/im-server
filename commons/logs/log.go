@@ -10,8 +10,8 @@ import (
 
 	"im-server/commons/configures"
 
-	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
-	"github.com/sirupsen/logrus"
+	rotatelogs "github.com/lestrrat-go/file-rotatelogs" // 日志切割和保留
+	"github.com/sirupsen/logrus"                        // 写日志
 )
 
 // var LogOut io.Writer
@@ -39,7 +39,7 @@ func initInfoLogger() {
 	if logExpireHours <= 0 {
 		logExpireHours = 24
 	}
-	writer, err := rotatelogs.New(
+	writer, err := rotatelogs.New( // fmt.Sprintf()返回格式化字符串，不打印到控制台，%%Y%%m%%d%%H由rotatelogs解析为年月日小时
 		fmt.Sprintf(`%s/%s.%%Y%%m%%d%%H.log`, configures.Config.Log.LogPath, configures.Config.Log.LogName),
 		rotatelogs.WithLinkName(fmt.Sprintf(`%s/%s.log`, configures.Config.Log.LogPath, configures.Config.Log.LogName)),
 		rotatelogs.WithMaxAge(time.Duration(logExpireHours)*time.Hour),
